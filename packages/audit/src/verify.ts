@@ -12,7 +12,25 @@ const DOMAIN_CHAIN = Buffer.from('mcpose/v2/chain');
 export type ChainVerification =
   { valid: true } | { valid: false; index: number; reason: string };
 
+const CANONICAL_HEX = /^[0-9a-f]+$/;
+
+/**
+ * Exact-string hex comparison. `Buffer.from(x, 'hex')` is lenient: it drops a
+ * trailing nibble on odd-length input and stops at the first non-hex
+ * character, so a stored `signature + 'z'` (or `+ '0'`, or an uppercase
+ * respelling) decodes to the real bytes. Everything this package stores is
+ * lowercase canonical hex, so anything else is rejected before the
+ * constant-time byte comparison.
+ */
 function hexEqual(aHex: string, bHex: string): boolean {
+  if (
+    aHex.length !== bHex.length ||
+    aHex.length % 2 !== 0 ||
+    !CANONICAL_HEX.test(aHex) ||
+    !CANONICAL_HEX.test(bHex)
+  ) {
+    return false;
+  }
   const a = Buffer.from(aHex, 'hex');
   const b = Buffer.from(bHex, 'hex');
   return a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
